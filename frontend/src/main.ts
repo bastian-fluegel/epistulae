@@ -18,8 +18,16 @@ if ('caches' in window) {
 }
 
 // Version für Debugging
-const APP_VERSION = '0.2.0'
-console.log(`🚀 Epistulae v${APP_VERSION}`)
+const APP_VERSION = '0.3.0'
+console.warn(`🚀 Epistulae v${APP_VERSION} (Gemini Edition)`)
+
+// Debug Helper: Reset alles (nur für Entwicklung)
+;(window as any).resetEpistulae = () => {
+  console.log('🔄 Reset localStorage...')
+  localStorage.clear()
+  location.reload()
+}
+console.log('💡 Tipp: resetEpistulae() um alles neu zu starten')
 
 // App starten
 try {

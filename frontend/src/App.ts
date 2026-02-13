@@ -1,25 +1,44 @@
 /**
- * App: Orchestriert Auth, Onboarding, Views
+ * App: Lokale Version (ohne Auth) mit Gemini Letter Queue
  */
-import {
-  getFirebaseAuth,
-  onAuthChange,
-  signInWithGoogle,
-  handleRedirectResult,
-  signOut,
-  getUserProfile,
-  setUserProfile,
-  getUserProgress,
-  setUserProgress,
-  type UserProfile,
-  type UserProgress,
-} from './firebase'
-import { getLetter, getFirstLetterId, getNextLetterId, getLetterCount } from './letters'
-import { getOfflineProgress, setOfflineProgress } from './sync'
 import { renderHUD, bindHUD, type View } from './components/HUD'
-import { showLetter, showWaiting, showEnd } from './views/LetterView'
-import { showProgress } from './views/ProgressView'
+import { showHome } from './views/HomeView'
+import { showLetter, showWaiting, showEnd, type LetterWithScholar } from './views/LetterView'
+import { showProgress } from './views/ProgressViewNew'
+import { showScholars } from './views/ScholarsView'
 import { showProfile } from './views/ProfileView'
+import { renderCountdown } from './components/Countdown'
+import {
+  initializeQueue,
+  getNextLetter,
+  startBackgroundGeneration,
+  stopBackgroundGeneration,
+  getQueueSize,
+  getQueueInfo,
+  type QueuedLetter,
+} from './letterQueue'
+
+// Types
+export interface UserProfile {
+  displayName: string
+  age: number
+  wantToLearn: string
+  selfDescription: string
+}
+
+export interface AnsweredLetter {
+  letterId: string
+  text: string
+  answer: string
+  scholarName: string
+  answeredAt: number
+}
+
+export interface UserProgress {
+  currentLetter: QueuedLetter | null
+  answeredLetters: AnsweredLetter[]
+  updatedAt?: number
+}
 
 function escapeHtml(s: string): string {
   const div = document.createElement('div')
@@ -31,128 +50,71 @@ export function initApp(): void {
   const root = document.getElementById('app')
   if (!root) return
 
-  // State
-  let authLoading = false
-  let authError: string | null = null
-  let profile: UserProfile | null = null
-  let progress: UserProgress | null = null
-  let currentView: View = 'letter'
+  // State (LOCAL ONLY - kein Auth)
+  let profile: UserProfile | null = getLocalProfile()
+  let progress: UserProgress = getLocalProgress() || { currentLetter: null, answeredLetters: [] }
+  let currentView: View = 'home'
 
+  /*         <header class="header">
+          <h1 class="title">Epistulae</h1>
+          <p class="subtitle">Briefe aus der Gegenwart – Lokale Version</p>
+        </header> */
   // Layout
   root.innerHTML = `
     <div class="page">
-      <div id="auth-bar"></div>
       <div id="hud"></div>
       <div id="content">
-        <header class="header">
-          <h1 class="title">Epistulae</h1>
-          <p class="subtitle">Briefe aus der Gegenwart</p>
-        </header>
-        <main id="main"></main>
+
+        <main id="main" style="display:block;min-height:200px;flex:1;"></main>
         <footer class="footer">
-          <p>Keine richtige Antwort – nur deine.</p>
+          <p>Keine richtige Antwort – nur deine.<br><br>Copyright (c) 2026 - Bastian Flügel<br>All rights reserved.<br>Icons by Icons8</p>
         </footer>
       </div>
     </div>
   `
 
-  const authBarEl = document.getElementById('auth-bar')!
   const hudEl = document.getElementById('hud')!
   const mainEl = document.getElementById('main')!
 
   // ============================================
-  // AUTH
+  // LOCAL STORAGE HELPERS
   // ============================================
 
-  async function handleLogin(): Promise<void> {
-    authError = null
-    authLoading = true
-    updateAuthBar()
-    try {
-      await signInWithGoogle()
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : ''
-      if (msg === 'REDIRECT') return
-      if (msg === 'UNAUTHORIZED_DOMAIN') {
-        authError = 'Diese Domain ist in Firebase nicht freigegeben.'
-      } else if (msg === 'CONFIGURATION_NOT_FOUND') {
-        authError = 'Firebase Authentication ist nicht eingerichtet.'
-      } else {
-        authError = 'Anmeldung fehlgeschlagen. Popup erlauben oder Seite neu laden.'
-      }
-    } finally {
-      authLoading = false
-      updateAuthBar()
-    }
+  function getLocalProfile(): UserProfile | null {
+    const raw = localStorage.getItem('epistulae_profile')
+    return raw ? JSON.parse(raw) : null
   }
 
-  function updateAuthBar(): void {
-    const user = getFirebaseAuth().currentUser
-    
-    if (authError) {
-      authBarEl.innerHTML = `
-        <div class="auth-bar">
-          <span class="auth-error">${escapeHtml(authError)}</span>
-          <button type="button" class="btn-login">Erneut versuchen</button>
-        </div>
-      `
-    } else if (user) {
-      authBarEl.innerHTML = `
-        <div class="auth-bar">
-          <span class="user-email">${escapeHtml(user.email || '')}</span>
-          <button type="button" class="btn-logout">Abmelden</button>
-        </div>
-      `
-    } else {
-      authBarEl.innerHTML = `
-        <div class="auth-bar">
-          <button type="button" class="btn-login" ${authLoading ? 'disabled' : ''}>
-            ${authLoading ? 'Wird angemeldet…' : 'Mit Google anmelden'}
-          </button>
-        </div>
-      `
-    }
-
-    // Bind buttons
-    const loginBtn = authBarEl.querySelector('.btn-login')
-    const logoutBtn = authBarEl.querySelector('.btn-logout')
-    if (loginBtn) loginBtn.addEventListener('click', () => handleLogin())
-    if (logoutBtn) logoutBtn.addEventListener('click', () => signOut())
-
-    // Update login gate if in auth view
-    const gate = mainEl.querySelector('.btn-login')
-    if (gate && !gate.hasAttribute('disabled')) {
-      gate.addEventListener('click', () => handleLogin())
-    }
+  function saveLocalProfile(p: UserProfile): void {
+    localStorage.setItem('epistulae_profile', JSON.stringify(p))
+    profile = p
   }
 
-  function showAuthGate(): void {
-    const btnLabel = authLoading ? 'Wird angemeldet…' : 'Mit Google anmelden'
-    const errorBlock = authError
-      ? `<p class="auth-gate-error" role="alert">${escapeHtml(authError)}</p>`
-      : ''
-
-    mainEl.innerHTML = `
-      <div class="auth-gate">
-        <div class="auth-gate-card">
-          <h2 class="auth-gate-title">Anmelden</h2>
-          <p class="auth-gate-text">Die Briefe von Sokrates sind nur für dich sichtbar. Melde dich mit Google an, um Epistulae zu nutzen.</p>
-          ${errorBlock}
-          <button type="button" class="btn-login btn-login-primary" ${authLoading ? 'disabled' : ''}>
-            ${escapeHtml(btnLabel)}
-          </button>
-        </div>
-      </div>
-    `
-
-    const btn = mainEl.querySelector('.btn-login')
-    if (btn && !btn.hasAttribute('disabled')) {
-      btn.addEventListener('click', () => handleLogin())
+  function getLocalProgress(): UserProgress | null {
+    const raw = localStorage.getItem('epistulae_progress')
+    if (!raw) {
+      return { currentLetter: null, answeredLetters: [] }
     }
+    return JSON.parse(raw)
+  }
+
+  function saveLocalProgress(p: Partial<UserProgress>): void {
+    const updated = { ...progress, ...p, updatedAt: Date.now() }
+    localStorage.setItem('epistulae_progress', JSON.stringify(updated))
+    progress = updated as UserProgress
+  }
+
+  function getLetterHistoryForGemini(): Array<{ text: string; answer: string; scholar: string }> {
+    if (!progress || !progress.answeredLetters) return []
+    return progress.answeredLetters.map(l => ({
+      text: l.text,
+      answer: l.answer,
+      scholar: l.scholarName,
+    }))
   }
 
   // ============================================
-  // ONBOARDING
+  // ONBOARDING (LOCAL)
   // ============================================
 
   function showOnboarding(): void {
@@ -182,21 +144,38 @@ export function initApp(): void {
     `
 
     const form = document.getElementById('onboarding-form') as HTMLFormElement
-    const user = getFirebaseAuth().currentUser
-    if (!user || !form) return
+    if (!form) return
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault()
+      const submitBtn = form.querySelector('.btn-submit') as HTMLButtonElement
+      submitBtn.disabled = true
+      submitBtn.textContent = 'Generiere erste Briefe...'
+
       const data = new FormData(form)
       const displayName = (data.get('displayName') as string)?.trim() || 'Du'
       const age = Number(data.get('age')) || 0
       const wantToLearn = (data.get('wantToLearn') as string)?.trim() || ''
       const selfDescription = (data.get('selfDescription') as string)?.trim() || ''
 
-      await setUserProfile(user.uid, { displayName, age, wantToLearn, selfDescription })
-      profile = { displayName, age, wantToLearn, selfDescription }
-      
-      navigateToView('letter')
+      const newProfile: UserProfile = { displayName, age, wantToLearn, selfDescription }
+      saveLocalProfile(newProfile)
+
+      // Initialisiere Queue (3 Briefe)
+      try {
+        await initializeQueue(newProfile, [])
+        console.log('✅ Queue initialisiert')
+        
+        // Starte Background Generation
+        startBackgroundGeneration(newProfile, getLetterHistoryForGemini)
+        
+        navigateToView('letter')
+      } catch (error) {
+        console.error('❌ Fehler beim Initialisieren der Queue:', error)
+        alert('Fehler beim Generieren der Briefe. Bitte versuche es erneut.')
+        submitBtn.disabled = false
+        submitBtn.textContent = 'Starten'
+      }
     })
   }
 
@@ -206,8 +185,20 @@ export function initApp(): void {
 
   function updateHUD(): void {
     if (!profile) return
-    const letterCount = getLetterCount(progress?.letterHistory ?? [])
-    hudEl.innerHTML = renderHUD({ displayName: profile.displayName, letterCount, currentView, onNavigate: navigateToView })
+    const letterCount = progress?.answeredLetters?.length || 0
+    const availableLetters = getQueueSize()
+    
+    // Debug Info
+    const queueInfo = getQueueInfo()
+    console.log(`📊 Queue: ${queueInfo.queueSize} Briefe, Nächster in: ${queueInfo.nextGenerationIn ?? '-'} Min`)
+    
+    hudEl.innerHTML = renderHUD({ 
+      displayName: profile.displayName, 
+      letterCount, 
+      availableLetters,
+      currentView, 
+      onNavigate: navigateToView 
+    })
     bindHUD(hudEl, navigateToView)
   }
 
@@ -215,162 +206,138 @@ export function initApp(): void {
     currentView = view
     updateHUD()
 
-    if (view === 'letter') showLetterView()
+    if (view === 'home') showHomeView()
+    else if (view === 'letter') showLetterView()
     else if (view === 'progress') showProgressView()
+    else if (view === 'scholars') showScholarsView()
     else if (view === 'profile') showProfileView()
   }
 
+  function showHomeView(): void {
+    if (!profile) return
+    const letterCount = progress?.answeredLetters?.length || 0
+    showHome(mainEl, profile.displayName, letterCount)
+  }
+
+  function showScholarsView(): void {
+    showScholars(mainEl)
+  }
+
   function showLetterView(): void {
-    const currentId = progress?.lastLetterId || getFirstLetterId()
-    const letter = getLetter(currentId)
+    if (!profile) return
+    updateHUD()
+    
+    // Hole aktuellen Brief (entweder aus progress oder nächsten aus Queue)
+    let currentLetter = progress.currentLetter
 
-    if (!letter) {
-      showEnd(mainEl)
-      return
-    }
-
-    showLetter(mainEl, letter, async (answerIndex) => {
-      const user = getFirebaseAuth().currentUser
-      if (!user) return
-
-      // Save progress
-      const history = [...(progress?.letterHistory ?? []), { letterId: currentId, chosenIndex: answerIndex }]
-      const nextId = getNextLetterId(currentId, answerIndex)
+    if (!currentLetter) {
+      // Kein aktueller Brief: hole nächsten aus Queue
+      currentLetter = getNextLetter()
       
-      const newProgress: Partial<UserProgress> = {
-        lastLetterId: nextId || currentId,
-        chosenAnswers: { ...progress?.chosenAnswers, [currentId]: answerIndex },
-        letterHistory: history,
-      }
-
-      setOfflineProgress({ lastLetterId: newProgress.lastLetterId, chosenAnswers: newProgress.chosenAnswers })
-      await setUserProgress(user.uid, newProgress)
-      progress = { ...progress, ...newProgress } as UserProgress
-      updateHUD()
-
-      // End or next letter?
-      if (!nextId) {
-        showEnd(mainEl)
+      if (!currentLetter) {
+        // Queue leer - zeige Countdown
+        const queueInfo = getQueueInfo()
+        const countdownHtml = queueInfo.nextGenerationIn !== null 
+          ? renderCountdown(queueInfo.nextGenerationIn)
+          : '<div class="countdown">📬 Briefe werden generiert...</div>'
+        
+        mainEl.innerHTML = `
+          <div style="text-align:center;padding:4rem 2rem;">
+            <h2 style="color:var(--accent);margin-bottom:2rem;">Alle Briefe beantwortet!</h2>
+            ${countdownHtml}
+            <p style="margin-top:2rem;color:var(--accent-soft);font-size:0.9rem;">
+              Briefe in Queue: ${getQueueSize()} / 7
+            </p>
+          </div>
+        `
         return
       }
 
-      // Waiting animation → next letter
+      // Speichere als aktuellen Brief
+      saveLocalProgress({ currentLetter })
+    }
+
+    // Zeige Brief an
+    const letterWithScholar: LetterWithScholar = {
+      id: currentLetter.id,
+      topic: currentLetter.topic,
+      text: currentLetter.text,
+      antworten: currentLetter.answers as [string, string, string],
+      scholar: currentLetter.scholar,
+    }
+
+    showLetter(mainEl, letterWithScholar, (answerText: string) => {
+      // Speichere Antwort
+      const answeredLetter: AnsweredLetter = {
+        letterId: currentLetter!.id,
+        text: currentLetter!.text,
+        answer: answerText,
+        scholarName: currentLetter!.scholar.name,
+        answeredAt: Date.now(),
+      }
+
+      const updatedAnswered = [...progress.answeredLetters, answeredLetter]
+
+      saveLocalProgress({
+        currentLetter: null, // Aktuellen Brief löschen
+        answeredLetters: updatedAnswered,
+      })
+
+      updateHUD()
+
+      // Waiting animation → nächster Brief
       showWaiting(mainEl, () => {
-        const nextLetter = getLetter(nextId)
-        if (nextLetter) {
-          showLetter(mainEl, nextLetter, (idx) => showLetterView())
-        } else {
-          showEnd(mainEl)
-        }
+        showLetterView()
       })
     })
   }
 
   function showProgressView(): void {
-    const letterHistory = progress?.letterHistory ?? []
-    showProgress(mainEl, letterHistory)
+    const letters = progress?.answeredLetters || []
+    showProgress(mainEl, letters)
   }
 
   function showProfileView(): void {
     if (!profile) return
-    const letterCount = getLetterCount(progress?.letterHistory ?? [])
-    showProfile(mainEl, {
-      displayName: profile.displayName,
-      age: profile.age,
-      wantToLearn: profile.wantToLearn,
-      selfDescription: profile.selfDescription,
-      letterCount,
-    })
-  }
-
-  // ============================================
-  // AUTH FLOW
-  // ============================================
-
-  async function handleAuthChange(): Promise<void> {
-    const user = getFirebaseAuth().currentUser
-
-    if (!user) {
-      profile = null
-      progress = null
-      hudEl.innerHTML = ''
-      showAuthGate()
-      return
-    }
-
-    // Load profile & progress
-    const [loadedProfile, loadedProgress] = await Promise.all([
-      getUserProfile(user.uid),
-      getUserProgress(user.uid),
-    ])
-
-    profile = loadedProfile
-    progress = loadedProgress
-
-    // Sync offline progress
-    const local = getOfflineProgress()
-    if (local?.lastLetterId && progress) {
-      const remoteTs =
-        progress.updatedAt && typeof progress.updatedAt === 'object' && 'seconds' in progress.updatedAt
-          ? (progress.updatedAt as { seconds: number }).seconds * 1000
-          : 0
-      const localTime = new Date(local.updatedAt).getTime()
-      if (localTime > remoteTs) {
-        await setUserProgress(user.uid, {
-          lastLetterId: local.lastLetterId,
-          chosenAnswers: local.chosenAnswers,
+    const letterCount = progress?.answeredLetters?.length || 0
+    
+    showProfile(
+      mainEl, 
+      {
+        displayName: profile.displayName,
+        age: profile.age,
+        wantToLearn: profile.wantToLearn,
+        selfDescription: profile.selfDescription,
+        letterCount,
+      },
+      (updated) => {
+        // Speichere aktualisiertes Profil
+        saveLocalProfile({
+          displayName: updated.displayName,
+          age: updated.age,
+          wantToLearn: updated.wantToLearn,
+          selfDescription: updated.selfDescription,
         })
-        progress = (await getUserProgress(user.uid)) ?? progress
+        updateHUD()
       }
-    }
-
-    // Show onboarding or main app
-    if (!profile) {
-      showOnboarding()
-    } else {
-      navigateToView('letter')
-    }
+    )
   }
 
   // ============================================
-  // INIT
+  // INIT (LOCAL ONLY)
   // ============================================
 
-  try {
-    getFirebaseAuth()
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Firebase nicht geladen.'
-    authBarEl.innerHTML = `
-      <div class="auth-bar">
-        <span class="auth-error">${escapeHtml(msg)}</span>
-      </div>
-      <p style="margin:1rem 0;font-size:0.9rem;color:#666;">
-        In <code>frontend/.env</code> die Werte aus der Firebase Console eintragen.
-      </p>
-    `
-    return
-  }
-
-  updateAuthBar()
-  onAuthChange(() => {
-    authError = null
-    updateAuthBar()
-    handleAuthChange()
-  })
-
-  handleRedirectResult().then((user) => {
-    if (user) {
-      authError = null
-      updateAuthBar()
-      handleAuthChange()
-    }
-  })
-
-  // Initial view
-  const user = getFirebaseAuth().currentUser
-  if (user) {
-    handleAuthChange()
+  // Show onboarding or main app
+  if (!profile) {
+    showOnboarding()
   } else {
-    showAuthGate()
+    // Profil existiert: Starte Background Generation
+    startBackgroundGeneration(profile, getLetterHistoryForGemini)
+    navigateToView('home')
   }
+  
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    stopBackgroundGeneration()
+  })
 }

@@ -1,18 +1,21 @@
 /**
- * HUD: Navigation zwischen Letter, Progress, Profile
+ * HUD: Navigation zwischen Home, Letter, Progress, Scholars, Profile
  */
-export type View = 'letter' | 'progress' | 'profile'
+export type View = 'home' | 'letter' | 'progress' | 'scholars' | 'profile'
 
 export interface HUDProps {
   displayName: string
   letterCount: number
+  availableLetters: number
   currentView: View
   onNavigate: (view: View) => void
 }
 
 const VIEWS = [
+  { id: 'home' as View, icon: '🏛️', label: 'Home' },
   { id: 'letter' as View, icon: '✉️', label: 'Briefe' },
-  { id: 'progress' as View, icon: '🌳', label: 'Fortschritt' },
+  { id: 'progress' as View, icon: '📊', label: 'Fortschritt' },
+  { id: 'scholars' as View, icon: '📚', label: 'Gelehrte' },
   { id: 'profile' as View, icon: '👤', label: 'Profil' },
 ]
 
@@ -31,7 +34,19 @@ export function renderHUD(props: HUDProps): string {
     <div class="hud">
       <div class="hud-header">
         <span class="hud-name">Hallo, ${escapeHtml(props.displayName)}</span>
-        <span class="hud-meta">${props.letterCount} Brief${props.letterCount !== 1 ? 'e' : ''}</span>
+        <div class="hud-meta">
+          <span class="hud-meta-item">
+            <span class="hud-meta-icon">✉️</span>
+            <span class="hud-meta-value">${props.availableLetters}</span>
+            <span class="hud-meta-label">verfügbar</span>
+          </span>
+          <span class="hud-meta-divider">|</span>
+          <span class="hud-meta-item">
+            <span class="hud-meta-icon">✅</span>
+            <span class="hud-meta-value">${props.letterCount}</span>
+            <span class="hud-meta-label">beantwortet</span>
+          </span>
+        </div>
       </div>
       <nav class="hud-nav">${navButtons}</nav>
     </div>

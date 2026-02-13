@@ -65,7 +65,9 @@ function initFirebase(): void {
   auth = getAuth(app)
   db = getFirestore(app)
 
-  setPersistence(auth, browserLocalPersistence).catch(() => {})
+  setPersistence(auth, browserLocalPersistence)
+    .then(() => console.log('✅ Auth persistence set to LOCAL'))
+    .catch((err) => console.error('❌ Failed to set auth persistence:', err))
 
   const useEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true'
   if (useEmulator) {
@@ -104,14 +106,20 @@ export async function signInWithGoogle(): Promise<User> {
   initFirebase()
   const provider = new GoogleAuthProvider()
   provider.addScope('email')
+  provider.addScope('profile')
   provider.setCustomParameters({ prompt: 'select_account' })
 
+  console.log('🔑 Starting Google sign-in...')
+  
   try {
     const result = await signInWithPopup(auth, provider)
+    console.log('✅ Popup sign-in successful:', result.user.email)
     return result.user
   } catch (err) {
+    console.log('⚠️ Popup error:', err)
     if (isAuthError(err)) {
       if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+        console.log('🔀 Using redirect flow...')
         await signInWithRedirect(auth, provider)
         throw new Error('REDIRECT')
       }
@@ -125,6 +133,7 @@ export async function signInWithGoogle(): Promise<User> {
     }
     const msg = err instanceof Error ? err.message : String(err)
     if (msg.includes('CONFIGURATION_NOT_FOUND')) throw new Error('CONFIGURATION_NOT_FOUND')
+    console.error('❌ Sign-in failed:', err)
     throw err
   }
 }
@@ -132,10 +141,18 @@ export async function signInWithGoogle(): Promise<User> {
 /** Nach Rückkehr von Redirect-Login: einmal beim App-Start aufrufen. */
 export async function handleRedirectResult(): Promise<User | null> {
   initFirebase()
+  console.log('🔍 Checking redirect result...')
   try {
     const result: UserCredential | null = await getRedirectResult(auth)
-    return result?.user ?? null
-  } catch {
+    if (result?.user) {
+      console.log('✅ Redirect login successful:', result.user.email)
+      return result.user
+    } else {
+      console.log('ℹ️ No redirect result (normal page load)')
+      return null
+    }
+  } catch (err) {
+    console.error('❌ Redirect result error:', err)
     return null
   }
 }

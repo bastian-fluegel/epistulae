@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 # Versionierung, Changelog-Update, Commit, Tag & Push
 # Nutzung: ./version.sh [patch|minor|major] ["Changelog-Nachricht"]

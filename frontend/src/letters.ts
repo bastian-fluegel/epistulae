@@ -7,6 +7,7 @@ export interface Letter {
   topic: string
   text: string
   antworten: [string, string, string]
+  scholarId?: string // ID des Gelehrten (siehe scholars.ts)
 }
 
 /** Nächster Brief pro Antwort (Index 0–2). Fehlt der Eintrag = Ende dieses Zweigs. */
@@ -26,6 +27,7 @@ const LETTERS: Record<string, Letter> = {
   'brief-1': {
     id: 'brief-1',
     topic: 'Anfang',
+    scholarId: 'sokrates',
     text: `Grüße, Freund! Ich bin durch eine mir unerklärliche Laune der Götter
 in eure Zeit geworfen worden. Alles hier verwirrt mich: die leuchtenden
 Schachteln, in die die Menschen starr blicken; die Wagen ohne Pferde;
@@ -40,6 +42,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   'brief-2a': {
     id: 'brief-2a',
     topic: 'Lauf & Stillstand',
+    scholarId: 'seneca',
     text: `Du sagst, vielleicht hält uns gar nichts – wir rennen mit. Das klingt nach Resignation, und doch steckt darin eine scharfe Beobachtung. Wenn niemand mehr hält, wer hält dann das Rennen am Laufen? Und: Willst du nur mitrennen, oder gibt es einen Ort, an dem du anhalten möchtest?`,
     antworten: [
       'Ehrlich gesagt renne ich oft ohne zu wissen wohin.',
@@ -50,6 +53,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   'brief-2b': {
     id: 'brief-2b',
     topic: 'Verbindung',
+    scholarId: 'platon',
     text: `Verbindung – zu anderen, zu etwas Größerem. In Athen sprachen wir von der Polis, vom Gemeinwesen. Heute sehe ich unzählige Fäden zwischen den Menschen, und doch wirkt vieles einsam. Was bedeutet dir diese Verbindung konkret? Und wo spürst du sie – oder ihr Fehlen?`,
     antworten: [
       'In der Familie und bei wenigen Freunden spüre ich sie.',
@@ -60,6 +64,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   'brief-2c': {
     id: 'brief-2c',
     topic: 'Suche',
+    scholarId: 'aristoteles',
     text: `Das Suchen als halbe Antwort – das gefällt mir. Wer sucht, hat noch nicht aufgegeben. Aber wonach suchst du genau? Und wie erträgst du es, die Antwort vielleicht nie zu finden?`,
     antworten: [
       'Ich suche nach einem Sinn, der zu mir passt.',
