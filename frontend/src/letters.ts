@@ -1,9 +1,10 @@
 /**
  * Brief-Inhalte und Ablauf: Welcher Brief folgt auf welche Antwort.
- * Später: neue Briefe aus Profil (name, alter, wantToLearn, selfDescription) generieren.
+ * Jeder Brief hat ein Thema (Bereich); jede Antwort hat anderen Einfluss auf den Pfad.
  */
 export interface Letter {
   id: string
+  topic: string
   text: string
   antworten: [string, string, string]
 }
@@ -24,6 +25,7 @@ const NEXT_LETTER: Record<string, [string | null, string | null, string | null]>
 const LETTERS: Record<string, Letter> = {
   'brief-1': {
     id: 'brief-1',
+    topic: 'Anfang',
     text: `Grüße, Freund! Ich bin durch eine mir unerklärliche Laune der Götter
 in eure Zeit geworfen worden. Alles hier verwirrt mich: die leuchtenden
 Schachteln, in die die Menschen starr blicken; die Wagen ohne Pferde;
@@ -37,6 +39,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   },
   'brief-2a': {
     id: 'brief-2a',
+    topic: 'Lauf & Stillstand',
     text: `Du sagst, vielleicht hält uns gar nichts – wir rennen mit. Das klingt nach Resignation, und doch steckt darin eine scharfe Beobachtung. Wenn niemand mehr hält, wer hält dann das Rennen am Laufen? Und: Willst du nur mitrennen, oder gibt es einen Ort, an dem du anhalten möchtest?`,
     antworten: [
       'Ehrlich gesagt renne ich oft ohne zu wissen wohin.',
@@ -46,6 +49,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   },
   'brief-2b': {
     id: 'brief-2b',
+    topic: 'Verbindung',
     text: `Verbindung – zu anderen, zu etwas Größerem. In Athen sprachen wir von der Polis, vom Gemeinwesen. Heute sehe ich unzählige Fäden zwischen den Menschen, und doch wirkt vieles einsam. Was bedeutet dir diese Verbindung konkret? Und wo spürst du sie – oder ihr Fehlen?`,
     antworten: [
       'In der Familie und bei wenigen Freunden spüre ich sie.',
@@ -55,6 +59,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   },
   'brief-2c': {
     id: 'brief-2c',
+    topic: 'Suche',
     text: `Das Suchen als halbe Antwort – das gefällt mir. Wer sucht, hat noch nicht aufgegeben. Aber wonach suchst du genau? Und wie erträgst du es, die Antwort vielleicht nie zu finden?`,
     antworten: [
       'Ich suche nach einem Sinn, der zu mir passt.',
@@ -64,6 +69,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   },
   'brief-3a': {
     id: 'brief-3a',
+    topic: 'Stehen bleiben',
     text: `„Ehrlich gesagt renne ich oft ohne zu wissen wohin.“ Diese Ehrlichkeit ist der erste Schritt. Viele rennen und tun so, als wüssten sie das Ziel. Du tust es nicht. Die Frage ist: Möchtest du weiter nur rennen, oder willst du irgendwann stehen bleiben und schauen, wo du bist?`,
     antworten: [
       'Ich möchte stehen bleiben – ich weiß nur nicht wie.',
@@ -73,6 +79,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   },
   'brief-3b': {
     id: 'brief-3b',
+    topic: 'Ort in dir',
     text: `Einen Ort zum Anhalten suchen und ihn nicht finden – das ist schmerzlich. Vielleicht suchst du den falschen Ort: nicht einen Punkt auf der Landkarte, sondern einen Zustand in dir. Wo bist du, wenn du nicht suchst, sondern einfach da bist?`,
     antworten: [
       'Selten – meist bin ich in Gedanken woanders.',
@@ -82,6 +89,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   },
   'brief-3c': {
     id: 'brief-3c',
+    topic: 'Nähren & Geben',
     text: `Familie und wenige Freunde – das klingt nach etwas Festem. In einer Zeit, die so viel Verbindung verspricht und doch oft leer lässt, ist das kein wenig. Die Frage ist: Nährst du diese Verbindungen, oder nähren sie dich – oder beides?`,
     antworten: [
       'Ich hoffe beides; manchmal fühle ich mich leer trotzdem.',
@@ -91,6 +99,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   },
   'brief-3d': {
     id: 'brief-3d',
+    topic: 'Tiefe Verbindung',
     text: `Oberflächlich verbunden – du triffst einen Nerv. Viele Fäden, wenig Tiefe. Was bräuchte es für dich, damit eine Verbindung tief genug wäre? Und hast du sie je erlebt?`,
     antworten: [
       'Ehrlichkeit und Zeit. Ja, vereinzelt.',
@@ -100,6 +109,7 @@ Sag mir – was hält diese Welt im Innersten zusammen? Und was hält dich?`,
   },
   'brief-3e': {
     id: 'brief-3e',
+    topic: 'Suchen atmen',
     text: `Das Suchen selbst gibt dir Halt – mehr als jede fertige Antwort. Dann bist du schon weiter als viele, die eine Antwort haben und doch unsicher sind. Behalte dieses Suchen bei; lass dich nur nicht von ihm verzehren. Es gibt ein Suchen, das atmet, und eines, das erstickt.`,
     antworten: [
       'Ich will atmen. Danke für diese Worte.',
@@ -126,4 +136,57 @@ export function getNextLetterId(letterId: string, chosenIndex: number): string |
 
 export function getLetterCount(letterHistory: { letterId: string; chosenIndex: number }[]): number {
   return letterHistory?.length ?? 0
+}
+
+/** Ein Ast im Fortschrittsbaum: Brief-Knoten + Kinder pro Antwort. */
+export interface ProgressTreeNode {
+  letterId: string
+  topic: string
+  /** Für jede Antwort (0–2): Kind-Knoten oder null. */
+  children: { answerIndex: number; answerSnippet: string; child: ProgressTreeNode | null }[]
+}
+
+/** Gesamten Brief-Baum aufbauen (für Fortschritts-Visualisierung). */
+export function buildProgressTree(): ProgressTreeNode | null {
+  const rootId = getFirstLetterId()
+  const letter = getLetter(rootId)
+  if (!letter) return null
+  return buildNode(rootId)
+}
+
+function buildNode(letterId: string): ProgressTreeNode {
+  const letter = getLetter(letterId)!
+  const next = NEXT_LETTER[letterId] ?? [null, null, null]
+  const children = next.map((nextId, answerIndex) => {
+    const raw = letter.antworten[answerIndex]
+    const snippet = (raw ? raw.slice(0, 40) + (raw.length > 40 ? '…' : '') : '')
+    return {
+      answerIndex,
+      answerSnippet: snippet,
+      child: nextId ? buildNode(nextId) : null,
+    }
+  })
+  return { letterId, topic: letter.topic, children }
+}
+
+/** Prüft, ob ein Knoten auf dem vom User gegangenen Pfad liegt. */
+export function isOnPath(
+  letterHistory: { letterId: string; chosenIndex: number }[],
+  letterId: string,
+  chosenIndex?: number
+): boolean {
+  for (let i = 0; i < letterHistory.length; i++) {
+    if (letterHistory[i].letterId !== letterId) continue
+    if (chosenIndex === undefined) return true
+    return letterHistory[i].chosenIndex === chosenIndex
+  }
+  return false
+}
+
+/** Index im letterHistory für diesen Brief (0-basiert), oder -1. */
+export function getPathIndex(letterHistory: { letterId: string; chosenIndex: number }[], letterId: string): number {
+  for (let i = 0; i < letterHistory.length; i++) {
+    if (letterHistory[i].letterId === letterId) return i
+  }
+  return -1
 }

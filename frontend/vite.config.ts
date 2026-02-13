@@ -12,8 +12,12 @@ export default defineConfig({
   },
   plugins: [
     VitePWA({
-      registerType: 'autoUpdate', // Service Worker aktualisiert sich bei neuem Build
+      registerType: 'autoUpdate',
+      injectRegister: null, // Manuell registrieren in main.ts
       workbox: {
+        cleanupOutdatedCaches: true,
+        skipWaiting: true, // Sofort aktivieren
+        clientsClaim: true, // Sofort Kontrolle übernehmen
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
@@ -34,7 +38,7 @@ export default defineConfig({
         theme_color: '#6b5344',
         background_color: '#f5f0e8',
         display: 'standalone',
-        start_url: '/',
+        start_url: '/?v=2', // Cache-Bust
         icons: [
           { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
         ],
