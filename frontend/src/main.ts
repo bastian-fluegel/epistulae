@@ -1,45 +1,20 @@
 import { initApp } from './App'
 
 // Version für Cache-Debugging
-const APP_VERSION = '2.0.0-profile-tree'
-console.log(`🚀 Epistulae v${APP_VERSION}`)
+const APP_VERSION = '0.2.0'
+console.log(`🚀 Epistulae v${APP_VERSION} - ${new Date().toISOString()}`)
 
-// SW-Update-Detection: Einfache Lösung ohne virtual module
+// Service Worker DEAKTIVIERT - Alle alten SWs deregistrieren
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(reg => {
-      setInterval(() => {
-        reg.update() // Check for updates every 60s
-      }, 60000)
-      
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing
-        if (!newWorker) return
-        
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // Neue Version verfügbar!
-            const banner = document.createElement('div')
-            banner.style.cssText = `
-              position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
-              background: #6b5344; color: #fff; padding: 1rem; text-align: center;
-              font-family: system-ui, sans-serif; font-size: 0.95rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            `
-            const btn = document.createElement('button')
-            btn.textContent = 'Jetzt aktualisieren'
-            btn.style.cssText = 'margin-left:1rem;padding:0.4rem 0.8rem;background:#fff;color:#6b5344;border:none;border-radius:4px;cursor:pointer;font-weight:500;'
-            btn.onclick = () => {
-              newWorker.postMessage({ type: 'SKIP_WAITING' })
-              window.location.reload()
-            }
-            banner.innerHTML = '<span>✨ Neue Version verfügbar!</span>'
-            banner.appendChild(btn)
-            document.body.prepend(banner)
-          }
-        })
-      })
-    })
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(reg => reg.unregister())
   })
+  // Alle Caches löschen
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => caches.delete(name))
+    })
+  }
 }
 
 try {

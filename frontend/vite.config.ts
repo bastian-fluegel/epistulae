@@ -13,12 +13,12 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: null, // Manuell registrieren in main.ts
+      injectRegister: false, // SW DEAKTIVIERT - kein Caching mehr
       workbox: {
         cleanupOutdatedCaches: true,
-        skipWaiting: true, // Sofort aktivieren
-        clientsClaim: true, // Sofort Kontrolle übernehmen
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        skipWaiting: true,
+        clientsClaim: true,
+        globPatterns: [],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
