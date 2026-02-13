@@ -15,6 +15,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/de/1.0.0/), Versionierung:
 
 ---
 
+## [0.1.1] – 2026-02-13
+
+### Hinzugefügt
+- Statische PWA, Firebase epistulae-2318a, Analytics, CI/CD
+
+---
+
 ## [0.1.0] – 2026-02-13
 
 ### Hinzugefügt
@@ -29,5 +36,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/de/1.0.0/), Versionierung:
 - Python 3.9+, FastAPI, Firebase Emulator Suite
 - Lokale Entwicklung mit Docker Compose
 
-[Unreleased]: https://github.com/bastian-fluegel/epistulae/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/bastian-fluegel/epistulae/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/bastian-fluegel/epistulae/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/bastian-fluegel/epistulae/releases/tag/v0.1.0
