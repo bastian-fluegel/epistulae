@@ -153,12 +153,37 @@ export function onAuthChange(callback: (user: User | null) => void): Unsubscribe
 const USERS_COLLECTION = 'users'
 const PROGRESS_COLLECTION = 'progress'
 const PROGRESS_DOC = 'data'
+const PROFILE_COLLECTION = 'profile'
+const PROFILE_DOC = 'data'
+
+export interface UserProfile {
+  displayName: string
+  age: number
+  wantToLearn: string
+  selfDescription: string
+  createdAt?: unknown
+}
 
 export interface UserProgress {
   lastLetterId?: string
   chosenAnswers?: Record<string, number>
+  letterHistory?: { letterId: string; chosenIndex: number }[]
   treeData?: unknown
   updatedAt?: { seconds: number; nanoseconds: number }
+}
+
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  const d = getFirebaseDb()
+  const ref = doc(d, USERS_COLLECTION, uid, PROFILE_COLLECTION, PROFILE_DOC)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return null
+  return snap.data() as UserProfile
+}
+
+export async function setUserProfile(uid: string, data: UserProfile): Promise<void> {
+  const d = getFirebaseDb()
+  const ref = doc(d, USERS_COLLECTION, uid, PROFILE_COLLECTION, PROFILE_DOC)
+  await setDoc(ref, { ...data, createdAt: new Date() }, { merge: true })
 }
 
 export async function getUserProgress(uid: string): Promise<UserProgress | null> {

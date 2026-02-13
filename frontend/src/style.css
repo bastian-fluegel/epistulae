@@ -167,6 +167,124 @@ body {
   margin: 0;
 }
 
+/* Typewriter: blinkender Cursor während des „Schreibens“ */
+.letter-body.typewriter-cursor::after {
+  content: '|';
+  animation: blink 0.8s step-end infinite;
+  color: var(--accent);
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* HUD für angemeldete User */
+.hud {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  flex-wrap: wrap;
+}
+.hud-name { color: var(--accent); font-weight: 500; }
+.hud-progress { color: var(--accent-soft); }
+.btn-profile {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: var(--sans);
+  border-radius: 6px;
+  border: 1px solid var(--paper-shadow);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+.btn-profile:hover {
+  background: #faf8f5;
+  border-color: var(--accent-soft);
+}
+
+/* Onboarding */
+.onboarding-wrap { max-width: 28rem; margin: 0 auto; }
+.onboarding {
+  padding: 1.5rem 0;
+}
+.onboarding-title {
+  font-family: var(--serif);
+  font-size: 1.75rem;
+  color: var(--accent);
+  margin: 0 0 0.5rem;
+}
+.onboarding-intro {
+  color: var(--accent-soft);
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+.onboarding-form label {
+  display: block;
+  margin: 1rem 0 0.35rem;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+.onboarding-form input,
+.onboarding-form textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-family: var(--sans);
+  font-size: 1rem;
+  border: 1px solid var(--paper-shadow);
+  border-radius: 6px;
+  background: #fff;
+}
+.onboarding-form textarea { resize: vertical; min-height: 4rem; }
+.btn-submit {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  font-family: var(--sans);
+  font-size: 1rem;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+.btn-submit:hover { background: var(--accent-soft); }
+
+/* Profil-Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+.modal {
+  background: var(--paper);
+  padding: 1.5rem;
+  border-radius: 8px;
+  max-width: 28rem;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+.modal h3 { margin: 0 0 1rem; font-family: var(--serif); color: var(--accent); }
+.modal p { margin: 0.5rem 0; font-size: 0.95rem; }
+.modal-text { white-space: pre-wrap; color: var(--accent-soft); }
+.btn-close {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  font-family: var(--sans);
+  border-radius: 6px;
+  border: 1px solid var(--paper-shadow);
+  background: #fff;
+  cursor: pointer;
+}
+.btn-close:hover { background: #faf8f5; }
+
 @media (min-width: 480px) {
   .title {
     font-size: 2.5rem;
