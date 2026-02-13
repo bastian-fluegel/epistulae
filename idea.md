@@ -1,7 +1,7 @@
 also wir wollen ein pwa game machen bei dem es darum geht das sokrates eine zeitreise in die heutige welt gemacht hat
-natürlichg ist er mit all dem überfordert und schreibt nun briefe an den nutzer
+natürlich ist er mit all dem überfordert und schreibt nun briefe an den nutzer
 zentral ist dabei der sokratische dialog
-es sollen immer drei mantwortoptionen zur verfügung stehen
+es sollen immer drei Antwortoptionen zur Verfügung stehen
 
 der fortschritt wird durch eine art baum visualisiert wobei folgendes gilt:
 -  abzweigung : neues thema
@@ -11,11 +11,8 @@ der fortschritt wird durch eine art baum visualisiert wobei folgendes gilt:
 
 es soll bei dem game nicht um reine wissensvermittlung sondern um selbstreflexion und weisheit gehen
 
-speicherung und anmeldung/regisrierung sollen per firebase registriert werden
-zur generierung der forschritte soll der google-ai-studio-api genutzt werden
-
-test.py sollte jetzt zeigen wie es mit  der api anbindung geht
-
+speicherung und anmeldung/registrierung sollen per firebase laufen (Auth + Firestore)
+zur generierung der fortschritte soll später die google-ai-studio-api genutzt werden (z.B. über Cloud Functions)
 
 ich hab noch nie auf google ein projekt (pwa) deployt, da bräuchte ich deine unterstützung
-es soll eine installierbare pwa werden, trotzdem bin ich ein freund von ssr (python)
+es soll eine installierbare pwa werden (statisches Frontend auf Firebase Hosting)

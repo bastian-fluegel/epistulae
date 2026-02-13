@@ -1,22 +1,23 @@
 /**
- * Firebase-Boilerplate: Auth (Google) + Firestore.
- *
- * Python-Vergleich: In Python würdest du firebase-admin im Backend nutzen
- * (Service-Account, get_firestore(), auth.verify_id_token()). Hier läuft alles
- * im Browser – keine eigene Server-Instanz, daher das Firebase JS SDK.
- * Logik, die in Python "auf dem Server" wäre (z.B. Nutzer-Fortschritt speichern),
- * passiert hier im Client und wird direkt in Firestore geschrieben (Regeln schützen).
+ * Firebase: Auth (Google), Firestore, Analytics.
+ * Kein Backend – alles im Browser über Firebase JS SDK.
  */
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  browserLocalPersistence,
+  setPersistence,
   type User,
   type Auth,
+  type UserCredential,
   connectAuthEmulator,
+  type AuthError,
 } from 'firebase/auth'
 import {
   getFirestore,
@@ -30,9 +31,6 @@ import {
 } from 'firebase/firestore'
 import { getAnalytics, type Analytics, isSupported } from 'firebase/analytics'
 
-// Konfiguration aus Build-Zeit-Umgebung (Vite: import.meta.env).
-// In Python: os.getenv("FIREBASE_...") oder settings; hier müssen die Werte
-// zur Build-Zeit verfügbar sein, da sie ins Bundle eingebettet werden.
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -43,6 +41,18 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
+function validateConfig(): void {
+  const required = ['apiKey', 'authDomain', 'projectId', 'appId'] as const
+  for (const key of required) {
+    const val = firebaseConfig[key]
+    if (val == null || String(val).trim() === '' || String(val) === 'undefined') {
+      throw new Error(
+        `Firebase: VITE_FIREBASE_${key.toUpperCase().replace(/([A-Z])/g, '_$1')} fehlt. Bitte frontend/.env anlegen (siehe .env.example).`
+      )
+    }
+  }
+}
+
 let app: FirebaseApp
 let auth: Auth
 let db: Firestore
@@ -50,12 +60,13 @@ let analytics: Analytics | null = null
 
 function initFirebase(): void {
   if (app) return
+  validateConfig()
   app = initializeApp(firebaseConfig)
   auth = getAuth(app)
   db = getFirestore(app)
 
-  // Optional: Emulatoren für lokale Entwicklung (wie in Python: FIRESTORE_EMULATOR_HOST).
-  // Bei Docker: Host-Ports 9098 (Auth) und 8081 (Firestore) – per .env setzbar.
+  setPersistence(auth, browserLocalPersistence).catch(() => {})
+
   const useEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true'
   if (useEmulator) {
     const authPort = import.meta.env.VITE_AUTH_EMULATOR_PORT || '9099'
@@ -81,12 +92,52 @@ export function getFirebaseDb(): Firestore {
   return db
 }
 
-/** Google Login. In Python: Backend würde OAuth-Token prüfen und Session setzen. */
+function isAuthError(e: unknown): e is AuthError {
+  return typeof e === 'object' && e !== null && 'code' in e
+}
+
+/**
+ * Google Login: zuerst Popup, bei Blockierung Redirect.
+ * Nach Redirect: getRedirectResult() beim App-Start aufrufen.
+ */
 export async function signInWithGoogle(): Promise<User> {
   initFirebase()
   const provider = new GoogleAuthProvider()
-  const result = await signInWithPopup(auth, provider)
-  return result.user
+  provider.addScope('email')
+  provider.setCustomParameters({ prompt: 'select_account' })
+
+  try {
+    const result = await signInWithPopup(auth, provider)
+    return result.user
+  } catch (err) {
+    if (isAuthError(err)) {
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+        await signInWithRedirect(auth, provider)
+        throw new Error('REDIRECT')
+      }
+      if (err.code === 'auth/unauthorized-domain') {
+        throw new Error('UNAUTHORIZED_DOMAIN')
+      }
+      if (err.code === 'auth/invalid-api-key' || err.code === 'auth/configuration-not-found' || String((err as { message?: string }).message || '').includes('CONFIGURATION_NOT_FOUND')) {
+        throw new Error('CONFIGURATION_NOT_FOUND')
+      }
+      throw new Error(err.code)
+    }
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('CONFIGURATION_NOT_FOUND')) throw new Error('CONFIGURATION_NOT_FOUND')
+    throw err
+  }
+}
+
+/** Nach Rückkehr von Redirect-Login: einmal beim App-Start aufrufen. */
+export async function handleRedirectResult(): Promise<User | null> {
+  initFirebase()
+  try {
+    const result: UserCredential | null = await getRedirectResult(auth)
+    return result?.user ?? null
+  } catch {
+    return null
+  }
 }
 
 export async function signOut(): Promise<void> {
@@ -94,64 +145,46 @@ export async function signOut(): Promise<void> {
   await firebaseSignOut(auth)
 }
 
-/** Auth-State beobachten. In Python: Middleware/Session-Check pro Request. */
 export function onAuthChange(callback: (user: User | null) => void): Unsubscribe {
   initFirebase()
   return onAuthStateChanged(auth, callback)
 }
 
-// Firestore-Pfade (Nutzer-ID-basiert, Spark-konform: wenige Collections)
 const USERS_COLLECTION = 'users'
-const PROGRESS_DOC = 'progress'
+const PROGRESS_COLLECTION = 'progress'
+const PROGRESS_DOC = 'data'
 
 export interface UserProgress {
   lastLetterId?: string
   chosenAnswers?: Record<string, number>
   treeData?: unknown
-  updatedAt: { seconds: number; nanoseconds: number } | unknown
+  updatedAt?: { seconds: number; nanoseconds: number }
 }
 
-/**
- * Fortschritt des Nutzers lesen.
- * In Python: db.collection('users').document(uid).get() mit firebase-admin.
- */
 export async function getUserProgress(uid: string): Promise<UserProgress | null> {
   const d = getFirebaseDb()
-  const ref = doc(d, USERS_COLLECTION, uid, PROGRESS_DOC, 'data')
+  const ref = doc(d, USERS_COLLECTION, uid, PROGRESS_COLLECTION, PROGRESS_DOC)
   const snap = await getDoc(ref)
   if (!snap.exists()) return null
   return snap.data() as UserProgress
 }
 
-/**
- * Fortschritt speichern (merge). In Python: set_doc mit merge=True.
- */
-export async function setUserProgress(
-  uid: string,
-  data: Partial<UserProgress>
-): Promise<void> {
+export async function setUserProgress(uid: string, data: Partial<UserProgress>): Promise<void> {
   const d = getFirebaseDb()
-  const ref = doc(d, USERS_COLLECTION, uid, PROGRESS_DOC, 'data')
+  const ref = doc(d, USERS_COLLECTION, uid, PROGRESS_COLLECTION, PROGRESS_DOC)
   await setDoc(
     ref,
-    {
-      ...data,
-      updatedAt: new Date(),
-    },
+    { ...data, updatedAt: new Date() },
     { merge: true }
   )
 }
 
-/**
- * Echtzeit-Listener auf Nutzer-Fortschritt (optional, z.B. für Multi-Tab).
- * In Python: typischerweise kein langer Lauscher; hier Firestore onSnapshot.
- */
 export function subscribeUserProgress(
   uid: string,
   callback: (data: UserProgress | null) => void
 ): Unsubscribe {
   const d = getFirebaseDb()
-  const ref = doc(d, USERS_COLLECTION, uid, PROGRESS_DOC, 'data')
+  const ref = doc(d, USERS_COLLECTION, uid, PROGRESS_COLLECTION, PROGRESS_DOC)
   return onSnapshot(ref, (snap) => {
     callback(snap.exists() ? (snap.data() as UserProgress) : null)
   })

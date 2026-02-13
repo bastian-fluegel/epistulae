@@ -1,131 +1,65 @@
-# Firebase mit Epistulae verbinden
+# Firebase für Epistulae einrichten
 
-Diese Anleitung beschreibt, wie du das Projekt mit Firebase (echtes Projekt oder lokale Emulatoren) verbindest.
+Epistulae nutzt **nur Firebase** (kein eigenes Backend): Auth (Google), Firestore, Hosting.
 
 ---
 
-## 1. Firebase-Projekt anlegen (Produktion)
+## 1. Projekt in der Firebase Console
 
-1. Gehe zu [Firebase Console](https://console.firebase.google.com/).
-2. **Projekt erstellen** (oder bestehendes wählen) → z.B. `epistulae`.
-3. Optional: Google Analytics aktivieren.
-
-### 1.1 Authentication aktivieren
-
-- Links **Build** → **Authentication** → **Get started**.
-- Unter **Sign-in method** z.B. **E-Mail/Passwort** und **Google** aktivieren.
-- Unter **Authorized domains** später deine App-Domain eintragen (für lokale Entwicklung: `localhost` ist bereits erlaubt).
-
-### 1.2 Firestore aktivieren
-
-- **Build** → **Firestore Database** → **Create database**.
-- **Testmodus** für Entwicklung oder direkt **Production** mit Regeln.
-- Region wählen (z.B. `europe-west1`).
-
-### 1.3 Konfiguration holen
-
-- **Projektübersicht** (Zahnrad) → **Projekteinstellungen**.
-- Unter **Allgemein** → **Deine Apps** → **</> Web-App** hinzufügen (falls noch nicht).
-- **Firebase SDK-Konfiguration** (z.B. `firebaseConfig`) und **Firebase Admin SDK** (Service-Account-Key) fürs Backend notieren.
+1. [Firebase Console](https://console.firebase.google.com/) → Projekt wählen oder anlegen (z.B. `epistulae-2318a`).
+2. **Build** → **Authentication** → **Get started**.
+3. **Sign-in method** → **Google** aktivieren (E-Mail, Anzeigename, Support-URL ausfüllen). Ohne diesen Schritt erscheint im Browser „CONFIGURATION_NOT_FOUND“ (400) und der Google-Login funktioniert nicht.
+4. **Einstellungen** (Zahnrad) → **Authorized domains**: Für lokale Entwicklung ist `localhost` bereits erlaubt. Für die Live-App die Hosting-Domain eintragen (z.B. `epistulae-2318a.web.app`).
+5. **Build** → **Firestore Database** → **Create database** (Production mit Regeln oder Testmodus), Region wählen (z.B. `europe-west1`).
+6. **Projekteinstellungen** (Zahnrad) → **Allgemein** → **Deine Apps** → **</> Web-App** hinzufügen (falls noch nicht). Die angezeigte `firebaseConfig` (apiKey, authDomain, projectId, …) für Schritt 2 verwenden.
 
 ---
 
 ## 2. Konfiguration im Projekt
 
-### 2.1 Umgebungsvariablen (Backend / lokale Entwicklung)
+Alle Werte kommen aus der **Web-App-Konfiguration** (kein Service-Account nötig).
 
-Erstelle bzw. ergänze `.env` im Projektroot (wird von `.gitignore` ausgeschlossen):
+Im Ordner **frontend** eine Datei **`.env`** anlegen (wird nicht ins Repo committet):
 
 ```bash
-# Google AI (bereits vorhanden)
-GOOGLE_API_KEY=dein_google_ai_studio_key
-
-# Firebase Admin (Backend)
-FIREBASE_PROJECT_ID=epistulae
-# Optional, wenn du Service-Account-JSON nutzt:
-# GOOGLE_APPLICATION_CREDENTIALS=path/to/serviceAccountKey.json
+cd frontend
+cp .env.example .env
 ```
 
-Für **Service-Account-Key** (empfohlen für Backend):
+`.env` mit den Werten aus der Firebase Console füllen:
 
-1. Firebase Console → **Projekteinstellungen** → **Dienstkonten**.
-2. **Neuen privaten Schlüssel generieren** → JSON herunterladen.
-3. Datei z.B. als `config/firebase-service-account.json` ablegen (und in `.gitignore` eintragen).
-4. In `.env`:  
-   `GOOGLE_APPLICATION_CREDENTIALS=config/firebase-service-account.json`
-
-### 2.2 Frontend (Browser)
-
-Die Web-App braucht die **Firebase SDK-Konfiguration** (nur öffentliche Keys, kein Geheimnis):
-
-- In Firebase Console unter **Projekteinstellungen** → **Allgemein** → deine Web-App die Werte wie `apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId` kopieren.
-- Im Frontend entweder:
-  - aus einer **umgebungsbasierten Konfiguration** (z.B. Build-Zeit oder `/config.js` vom Backend), oder
-  - für lokale Entwicklung in eine Datei wie `static/config.firebase.js` (nur für Dev, nicht für echte Secrets).
-
-Beispiel `config.firebase.js` (nur für lokale Dev, nicht committen wenn mit echten Daten):
-
-```javascript
-window.__FIREBASE_CONFIG__ = {
-  apiKey: "...",
-  authDomain: "epistulae.firebaseapp.com",
-  projectId: "epistulae",
-  storageBucket: "epistulae.appspot.com",
-  messagingSenderId: "...",
-  appId: "..."
-};
-```
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MEASUREMENT_ID` (optional, für Analytics)
 
 ---
 
-## 3. Lokal mit Firebase-Emulatoren (Docker)
+## 3. Emulatoren (optional, nur lokal)
 
-Damit du ohne echtes Firebase-Projekt entwickeln kannst, laufen die **Firebase Auth- und Firestore-Emulatoren** in Docker. Die App verbindet sich dann mit den Emulator-URLs.
+Ohne echtes Firebase kannst du mit der Emulator Suite lokal testen:
 
-### 3.1 Was die Emulatoren ersetzen
+- [Emulator Suite](https://firebase.google.com/docs/emulator-suite) installieren und starten.
+- In `frontend/.env`: `VITE_USE_FIREBASE_EMULATOR=true`, ggf. `VITE_AUTH_EMULATOR_PORT=9099`, `VITE_FIRESTORE_EMULATOR_PORT=8080`.
 
-- **Authentication** → Nutzer anlegen/anmelden nur lokal.
-- **Firestore** → Daten (Briefe, Fortschritt, Baum) nur in der lokalen Emulator-Datenbank.
-
-### 3.2 Ablauf im Projekt
-
-1. **Emulatoren starten** (über Docker Compose, siehe README):
-   ```bash
-   docker compose up -d
-   ```
-   Damit starten die Firebase-Emulatoren und die Epistulae-App.
-   - **App:** http://localhost:8000  
-   - **Emulator-UI** (Auth, Firestore): http://localhost:4010 (Firestore 8081, Auth 9098)
-
-2. **Frontend auf Emulatoren umstellen**  
-   Wenn die App die Umgebungsvariable `USE_FIREBASE_EMULATOR=true` oder die Emulator-Hosts kennt, verbindet das Firebase JS SDK sich automatisch mit:
-   - Auth: `http://localhost:9099`
-   - Firestore: `localhost:8080`  
-   (Ports können in `firebase.json` stehen.)
-
-3. **Backend auf Emulatoren umstellen**  
-   Das Python-Backend nutzt die Umgebungsvariable `FIRESTORE_EMULATOR_HOST=localhost:8080` (und ggf. Auth-Emulator), damit das Admin SDK gegen die Emulatoren schreibt.
-
-Details stehen in der `docker-compose.yml` und in `firebase.json`.
-
-### 3.3 Von Emulator auf echtes Firebase umschalten
-
-- **Lokal ohne Docker:** `.env` ohne Emulator-Variablen, gültige `GOOGLE_APPLICATION_CREDENTIALS` und Projekt-ID → Verbindung zum echten Projekt.
-- **Docker:** In `docker-compose.yml` die Emulator-Variablen auskommentieren und echte Credentials als Volume/Env übergeben, dann starten.
+Die App verbindet sich dann mit den lokalen Emulatoren statt mit der Produktion.
 
 ---
 
 ## 4. Sicherheit
 
-- **API-Keys (Google AI, andere):** Nur im Backend (.env / Umgebungsvariablen), nie im Frontend committen.
-- **Firebase Web `apiKey`:** Ist für die Nutzung in öffentlichen Apps gedacht; Zugriff kontrollierst du über **Firestore Rules** und **Auth**.
-- **Service-Account-JSON:** Niemals committen, nur lokal oder über sichere Secrets (z.B. CI/Cloud) bereitstellen.
+- **API-Keys** in `.env` sind Build-Zeit-Variablen und werden ins Frontend-Bundle eingebettet. Der Zugriff wird über **Firestore Rules** und **Auth** gesteuert.
+- **`.env`** und **`frontend/.env`** nie committen (stehen in `.gitignore`).
+- Für CI die gleichen Werte als **GitHub Secrets** setzen (`VITE_FIREBASE_*`).
 
 ---
 
 ## 5. Nützliche Links
 
 - [Firebase Console](https://console.firebase.google.com/)
-- [Firebase Auth Dokumentation](https://firebase.google.com/docs/auth)
-- [Firestore Dokumentation](https://firebase.google.com/docs/firestore)
-- [Firebase Emulator Suite](https://firebase.google.com/docs/emulator-suite)
+- [Authentication (Google)](https://firebase.google.com/docs/auth/web/google-signin)
+- [Firestore](https://firebase.google.com/docs/firestore)
+- [Hosting](https://firebase.google.com/docs/hosting)

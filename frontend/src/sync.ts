@@ -1,12 +1,6 @@
 /**
- * Offline-First: Lokale Daten (localStorage/IndexedDB) und Sync mit Firestore.
- *
- * Python-Vergleich: In einer Python-Backend-Architektur würdest du eine
- * "Sync-Schicht" eher serverseitig haben (Queue, Retry, Konfliktlösung).
- * Hier passiert alles im Browser: zuerst lokal schreiben, bei Online-Verbindung
- * mit Firestore abgleichen. Kein eigener Server = diese Logik muss in JS leben.
+ * Offline-First: localStorage für Fortschritt, Sync mit Firestore bei Online.
  */
-
 const STORAGE_KEY = 'epistulae_offline_progress'
 
 export interface OfflineProgress {
@@ -16,7 +10,6 @@ export interface OfflineProgress {
   updatedAt: string
 }
 
-/** Lesen aus localStorage. In Python: z.B. Redis/Cache oder lokale SQLite. */
 export function getOfflineProgress(): OfflineProgress | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -27,7 +20,6 @@ export function getOfflineProgress(): OfflineProgress | null {
   }
 }
 
-/** Schreiben in localStorage (sofort). Sync mit Firestore erfolgt separat. */
 export function setOfflineProgress(data: Partial<Omit<OfflineProgress, 'updatedAt'>>): void {
   const current = getOfflineProgress() || {}
   const merged: OfflineProgress = {
@@ -38,11 +30,6 @@ export function setOfflineProgress(data: Partial<Omit<OfflineProgress, 'updatedA
   localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
 }
 
-/**
- * Bei Online: lokale Daten nach Firestore pushen und ggf. Remote-Stand einlesen.
- * Konfliktstrategie: "last write wins" (einfach für Spark-Plan).
- * In Python: würde man z.B. Celery/Queue nutzen oder einen Sync-Endpoint.
- */
 export function getProgressToSync(): OfflineProgress | null {
   return getOfflineProgress()
 }

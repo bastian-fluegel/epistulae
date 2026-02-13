@@ -1,7 +1,5 @@
 rules_version = '2';
-// Spark Plan: Nur Lese-/Schreibzugriff auf die eigene Nutzerdaten.
-// In Python würde man Ähnliches serverseitig prüfen; hier regelt Firestore den Zugriff.
-
+// Nur eigener Nutzerdaten-Zugriff (users/{uid}/…).
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId}/{document=**} {
