@@ -1,0 +1,140 @@
+:root {
+  --ink: #1a1a1a;
+  --paper: #f5f0e8;
+  --paper-shadow: #e0d9cc;
+  --accent: #6b5344;
+  --accent-soft: #8f7a6d;
+  --serif: "Cormorant Garamond", Georgia, serif;
+  --sans: "Source Sans 3", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.page {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--paper-shadow);
+}
+
+.title {
+  font-family: var(--serif);
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: var(--accent-soft);
+  margin: 0.35rem 0 0;
+  font-weight: 400;
+}
+
+.letter {
+  flex: 1;
+}
+
+.letter-meta {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-soft);
+  margin-bottom: 1rem;
+}
+
+.letter-body {
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  font-style: italic;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+.letter-prompt {
+  font-size: 0.9rem;
+  color: var(--accent-soft);
+  margin-bottom: 1.25rem;
+}
+
+.answers {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.answers li {
+  margin-bottom: 0.75rem;
+}
+
+.answer-btn {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--paper-shadow);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.answer-btn:hover {
+  background: #faf8f5;
+  border-color: var(--accent-soft);
+  box-shadow: 0 2px 8px rgba(107, 83, 68, 0.08);
+}
+
+.answer-btn:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(107, 83, 68, 0.2);
+}
+
+.footer {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--paper-shadow);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--accent-soft);
+}
+
+.footer p {
+  margin: 0;
+}
+
+@media (min-width: 480px) {
+  .title {
+    font-size: 2.5rem;
+  }
+  .letter-body {
+    font-size: 1.5rem;
+  }
+}

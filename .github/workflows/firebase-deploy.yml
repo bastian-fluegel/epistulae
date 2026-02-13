@@ -1,0 +1,56 @@
+# Bei jedem Push auf main: Frontend bauen und zu Firebase Hosting deployen.
+# Spark Plan (0€): Hosting + Auth + Firestore im Free-Tier nutzbar.
+#
+# GitHub Secrets (Repository → Settings → Secrets and variables → Actions):
+#   FIREBASE_TOKEN          – von "firebase login:ci" (CI-Login, kein Service-Account nötig)
+#   VITE_FIREBASE_API_KEY   – aus Firebase Console → Projekteinstellungen → Web-App
+#   VITE_FIREBASE_AUTH_DOMAIN
+#   VITE_FIREBASE_PROJECT_ID
+#   VITE_FIREBASE_STORAGE_BUCKET
+#   VITE_FIREBASE_MESSAGING_SENDER_ID
+#   VITE_FIREBASE_APP_ID
+
+name: Deploy to Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Build
+        working-directory: frontend
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: npm run build
+
+      - name: Deploy to Firebase Hosting
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting --non-interactive
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        # FIREBASE_TOKEN erzeugen: lokal "npx firebase login:ci" ausführen und Output als Secret speichern.

@@ -1,0 +1,17 @@
+.venv
+venv
+.env
+.git
+__pycache__
+*.pyc
+.vscode
+.idea
+*.md
+.gitignore
+Dockerfile
+docker-compose*.yml
+version.sh
+CHANGELOG.md
+VERSION
+docs/
+config/*.json

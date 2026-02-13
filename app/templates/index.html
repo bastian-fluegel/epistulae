@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Epistulae – Briefe von Sokrates</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Source+Sans+3:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <h1 class="title">Epistulae</h1>
+      <p class="subtitle">Briefe aus der Gegenwart</p>
+    </header>
+
+    <main class="letter">
+      <div class="letter-meta">Ein Brief von Sokrates</div>
+      <div class="letter-body">
+        {{ brief.text }}
+      </div>
+      <p class="letter-prompt">Wie möchtest du antworten?</p>
+      <ul class="answers">
+        {% for antwort in brief.antworten %}
+        <li>
+          <button type="button" class="answer-btn" data-answer="{{ loop.index }}">
+            {{ antwort }}
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+    </main>
+
+    <footer class="footer">
+      <p>Keine richtige Antwort – nur deine.</p>
+    </footer>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
